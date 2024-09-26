@@ -24,6 +24,7 @@ function App() {
 
       if (response.data) {
         setTrack(response.data);
+        setError(null); // Clear previous errors
       } else {
         setError("No track is currently playing.");
       }
@@ -86,7 +87,12 @@ function App() {
       <header className="App-header">
         <h1>Spotify Music Player</h1>
         {loading && <p>Loading...</p>}
-        {error && <p className="error">{error}</p>}
+        {error && (
+          <div>
+            <p className="error">{error}</p>
+            <button onClick={fetchCurrentlyPlaying}>Retry</button>
+          </div>
+        )}
         {track ? (
           <div className="track-info">
             <img
