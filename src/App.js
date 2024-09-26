@@ -7,11 +7,17 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Use your Heroku backend URL
   const backendUrl = "https://spotifytracker-938d28f9ab12.herokuapp.com/";
   const accessToken = new URLSearchParams(window.location.search).get(
     "access_token"
   );
+
+  // Redirect to login if there's no access token
+  useEffect(() => {
+    if (!accessToken) {
+      window.location.href = `${backendUrl}login`; // Redirect to backend login route
+    }
+  }, [accessToken, backendUrl]);
 
   const fetchCurrentlyPlaying = useCallback(async () => {
     if (!accessToken) return;
