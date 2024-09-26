@@ -1,57 +1,66 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import "./App.css"; // For styling
 
 function App() {
   const [track, setTrack] = useState(null);
-  const [accessToken, setAccessToken] = useState(
-    new URLSearchParams(window.location.search).get("access_token")
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Use your Heroku backend URL
+  const backendUrl = "https://spotifytracker-938d28f9ab12.herokuapp.com/";
+  const accessToken = new URLSearchParams(window.location.search).get(
+    "access_token"
   );
 
-  useEffect(() => {
-    // Only fetch the currently playing track if the access token is available
-    if (accessToken) {
-      fetchCurrentlyPlaying();
-    }
-  }, [accessToken]);
+  const fetchCurrentlyPlaying = useCallback(async () => {
+    if (!accessToken) return;
 
-  const fetchCurrentlyPlaying = async () => {
     try {
+      setLoading(true); // Start loading
       const response = await axios.get(
-        `http://localhost:8888/currently-playing?access_token=${accessToken}`
+        `${backendUrl}currently-playing?access_token=${accessToken}`
       );
-      setTrack(response.data);
+
+      if (response.data) {
+        setTrack(response.data);
+      } else {
+        setError("No track is currently playing.");
+      }
     } catch (error) {
       console.error("Error fetching currently playing track:", error);
-      // Optionally handle specific errors based on status code or error response
+      setError("Error fetching currently playing track.");
+    } finally {
+      setLoading(false); // Stop loading
     }
-  };
+  }, [accessToken, backendUrl]);
+
+  useEffect(() => {
+    fetchCurrentlyPlaying();
+  }, [fetchCurrentlyPlaying]);
 
   const handlePlayPause = () => {
     if (track) {
       const player = window.spotifyPlayer;
       if (player) {
-        player.togglePlay(); // Toggle play/pause
+        player.togglePlay();
       }
     }
   };
 
   useEffect(() => {
     if (window.Spotify && accessToken) {
-      // Define onSpotifyWebPlaybackSDKReady globally
       window.onSpotifyWebPlaybackSDKReady = () => {
-        const token = accessToken;
-
         const player = new window.Spotify.Player({
           name: "Music Player",
           getOAuthToken: (cb) => {
-            cb(token);
+            cb(accessToken);
           },
         });
 
         player.addListener("ready", ({ device_id }) => {
           console.log("Spotify Player is ready");
-          window.spotifyPlayer = player; // Store player instance globally for access in handlers
+          window.spotifyPlayer = player;
         });
 
         player.addListener("not_ready", ({ device_id }) => {
@@ -61,13 +70,11 @@ function App() {
         player.connect();
       };
 
-      // Load the Spotify SDK script
       const script = document.createElement("script");
       script.src = "https://sdk.scdn.co/spotify-player.js";
       script.async = true;
       document.body.appendChild(script);
 
-      // Clean up the script on component unmount
       return () => {
         document.body.removeChild(script);
       };
@@ -78,6 +85,8 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Spotify Music Player</h1>
+        {loading && <p>Loading...</p>}
+        {error && <p className="error">{error}</p>}
         {track ? (
           <div className="track-info">
             <img
@@ -97,7 +106,7 @@ function App() {
             </div>
           </div>
         ) : (
-          <p>Loading...</p>
+          <p>No track is currently playing.</p>
         )}
       </header>
     </div>
